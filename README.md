@@ -1,22 +1,22 @@
-# VDSR-PyTorch
+# EDSR-PyTorch
 
 ### Overview
 This repository contains an op-for-op PyTorch reimplementation of 
-[Accurate Image Super-Resolution Using Very Deep Convolutional Networks](https://arxiv.org/abs/1511.04587).
+[Enhanced Deep Residual Networks for Single Image Super-Resolution](https://arxiv.org/abs/1707.02921).
 
 ### Table of contents
-1. [Accurate Image Super-Resolution Using Very Deep Convolutional Networks](#about-accurate-image-super-resolution-using-very-deep-convolutional-networks)
+1. [Enhanced Deep Residual Networks for Single Image Super-Resolution](#about-enhanced-deep-residual-networks-for-single-image-super-resolution)
 2. [Installation](#installation)
     * [Clone and install requirements](#clone-and-install-requirements)
     * [Download pretrained weights](#download-pretrained-weights)
     * [Download dataset](#download-dataset)
 3. [Test](#test)
-4. [Train](#train-eg-voc2012)
-    * [Example](#example-eg-voc2012)
+4. [Train](#train-eg-div2k)
+    * [Example](#example-eg-div2k)
 5. [Contributing](#contributing) 
 6. [Credit](#credit)
 
-### About Accurate Image Super-Resolution Using Very Deep Convolutional Networks
+### About Enhanced Deep Residual Networks for Single Image Super-Resolution
 
 If you're new to VDSR, here's an abstract straight from the paper:
 
@@ -145,7 +145,7 @@ Low resolution / Recovered High Resolution / Ground Truth
 <span align="center"><img src="assets/result.png" alt="">
 </span>
 
-### Train (e.g VOC2012)
+### Train (e.g DIV2K)
 
 ```bash
 usage: train.py [-h] [--dataroot DATAROOT] [-j N] [--epochs N]
@@ -180,7 +180,7 @@ optional arguments:
   --cuda                Enables cuda
 ```
 
-#### Example (e.g VOC2012)
+#### Example (e.g DIV2K)
 
 ```bash
 python train.py --dataroot ./data/VOC2012 --scale-factor 4 --cuda
