@@ -91,8 +91,8 @@ def main():
 
 
 def load_dataset() -> [DataLoader, DataLoader]:
-    train_datasets = ImageDataset(config.train_image_dir)
-    valid_datasets = ImageDataset(config.valid_image_dir)
+    train_datasets = ImageDataset(config.train_image_dir, config.image_size, config.upscale_factor, "train")
+    valid_datasets = ImageDataset(config.valid_image_dir, config.image_size, config.upscale_factor, "valid")
     train_dataloader = DataLoader(train_datasets,
                                   batch_size=config.batch_size,
                                   shuffle=True,
