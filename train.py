@@ -1,4 +1,4 @@
-# Copyright 2020 Dakewe Biotech Corporation. All Rights Reserved.
+# Copyright 2021 Dakewe Biotech Corporation. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
@@ -10,165 +10,266 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-import argparse
-import math
+# ============================================================================
+"""File description: Realize the model training function."""
 import os
-import random
+import time
 
-import torch.backends.cudnn as cudnn
-import torch.nn as nn
-import torch.optim as optim
-import torch.utils.data
-import torch.utils.data.distributed
+import torch
+from torch import nn
+from torch import optim
 from torch.cuda import amp
-from tqdm import tqdm
+from torch.optim import lr_scheduler
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
-from edsr_pytorch import DatasetFromFolder
-from edsr_pytorch import EDSR
+import config
+from dataset import ImageDataset
+from model import EDSR
 
-parser = argparse.ArgumentParser(description="Enhanced Deep Residual Networks for Single Image Super-Resolution")
-parser.add_argument("--dataroot", type=str, default="./data/DIV2K",
-                    help="Path to datasets. (default:`./data/DIV2K`)")
-parser.add_argument("-j", "--workers", default=4, type=int, metavar="N",
-                    help="Number of data loading workers. (default:4)")
-parser.add_argument("--epochs", default=500, type=int, metavar="N",
-                    help="Number of total epochs to run. (default:500)")
-parser.add_argument("--image-size", type=int, default=48,
-                    help="Size of the data crop (squared assumed). (default:48)")
-parser.add_argument("-b", "--batch-size", default=16, type=int,
-                    metavar="N",
-                    help="mini-batch size (default: 16), this is the total "
-                         "batch size of all GPUs on the current node when "
-                         "using Data Parallel or Distributed Data Parallel.")
-parser.add_argument("--lr", type=float, default=0.0001,
-                    help="Learning rate. (default:0.0001)")
-parser.add_argument("--momentum", default=0.9, type=float,
-                    help="Momentum, (default:0.9)")
-parser.add_argument("--weight-decay", default=0.0001, type=float,
-                    help="Weight decay. (default:0.0001).")
-parser.add_argument("--scale-factor", type=int, default=4, choices=[2, 4],
-                    help="Low to high resolution scaling factor. (default:4).")
-parser.add_argument("--weights", default="",
-                    help="Path to weights (to continue training).")
-parser.add_argument("-p", "--print-freq", default=5, type=int,
-                    metavar="N", help="Print frequency. (default:5)")
-parser.add_argument("--manualSeed", type=int, default=0,
-                    help="Seed for initializing training. (default:0)")
-parser.add_argument("--cuda", action="store_true", help="Enables cuda")
 
-args = parser.parse_args()
-print(args)
+def main():
+    # Create a folder of super-resolution experiment results
+    samples_dir = os.path.join("samples", config.exp_name)
+    results_dir = os.path.join("results", config.exp_name)
+    if not os.path.exists(samples_dir):
+        os.makedirs(samples_dir)
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
 
-try:
-    os.makedirs("weights")
-except OSError:
-    pass
+    # Create training process log file
+    writer = SummaryWriter(os.path.join("samples", "logs", config.exp_name))
 
-if args.manualSeed is None:
-    args.manualSeed = random.randint(1, 10000)
-print("Random Seed: ", args.manualSeed)
-random.seed(args.manualSeed)
-torch.manual_seed(args.manualSeed)
+    print("Load train dataset and valid dataset...")
+    train_dataloader, valid_dataloader = load_dataset()
+    print("Load train dataset and valid dataset successfully.")
 
-cudnn.benchmark = True
+    print("Build SR model...")
+    model = build_model(config.upscale_factor)
+    print("Build SR model successfully.")
 
-if torch.cuda.is_available() and not args.cuda:
-    print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+    print("Define all loss functions...")
+    criterion = define_loss()
+    print("Define all loss functions successfully.")
 
-train_dataset = DatasetFromFolder(f"{args.dataroot}/train",
-                                  image_size=args.image_size,
-                                  scale_factor=args.scale_factor)
-val_dataset = DatasetFromFolder(f"{args.dataroot}/val",
-                                image_size=args.image_size,
-                                scale_factor=args.scale_factor)
+    print("Define all optimizer functions...")
+    optimizer = define_optimizer(model)
+    print("Define all optimizer functions successfully.")
 
-train_dataloader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               pin_memory=True,
-                                               num_workers=int(args.workers))
-val_dataloader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=args.batch_size,
-                                             shuffle=False,
-                                             pin_memory=True,
-                                             num_workers=int(args.workers))
+    print("Define all scheduler functions...")
+    scheduler = define_scheduler(optimizer)
+    print("Define all optimizer scheduler successfully.")
 
-device = torch.device("cuda:0" if args.cuda else "cpu")
+    print("Check whether the training weight is restored...")
+    resume_checkpoint(model)
+    print("Check whether the training weight is restored successfully.")
 
-model = EDSR(scale_factor=args.scale_factor).to(device)
+    # Initialize the gradient scaler
+    scaler = amp.GradScaler()
 
-if args.weights:
-    model.load_state_dict(torch.load(args.weights, map_location=device))
+    # Initialize training to generate network evaluation indicators
+    best_psnr = 0.0
 
-criterion = nn.L1Loss().to(device)
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr,
-                       weight_decay=args.weight_decay)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
+    print("Start train model.")
+    for epoch in range(config.start_epoch, config.epochs):
+        train(model, train_dataloader, criterion, optimizer, epoch, scaler, writer)
 
-best_psnr = 0.
+        psnr = validate(model, valid_dataloader, criterion, epoch, writer)
+        # Automatically save the model with the highest index
+        is_best = psnr > best_psnr
+        best_psnr = max(psnr, best_psnr)
+        torch.save(model.state_dict(), os.path.join(samples_dir, f"epoch_{epoch + 1}.pth"))
+        if is_best:
+            torch.save(model.state_dict(), os.path.join(results_dir, "best.pth"))
 
-# Creates a GradScaler once at the beginning of training.
-scaler = amp.GradScaler()
+        # Update lr
+        scheduler.step()
 
-print(f"[*] Staring training EDSR model!")
-for epoch in range(args.epochs):
+    # Save the generator weight under the last Epoch in this stage
+    torch.save(model.state_dict(), os.path.join(results_dir, "last.pth"))
+    print("End train model.")
+
+
+def load_dataset() -> [DataLoader, DataLoader]:
+    train_datasets = ImageDataset(config.train_image_dir)
+    valid_datasets = ImageDataset(config.valid_image_dir)
+    train_dataloader = DataLoader(train_datasets,
+                                  batch_size=config.batch_size,
+                                  shuffle=True,
+                                  num_workers=config.num_workers,
+                                  pin_memory=True,
+                                  persistent_workers=True)
+    valid_dataloader = DataLoader(valid_datasets,
+                                  batch_size=config.batch_size,
+                                  shuffle=False,
+                                  num_workers=config.num_workers,
+                                  pin_memory=True,
+                                  persistent_workers=True)
+
+    return train_dataloader, valid_dataloader
+
+
+def build_model(upscale_factor: int) -> nn.Module:
+    model = EDSR(upscale_factor=upscale_factor).to(config.device)
+
+    return model
+
+
+def define_loss() -> nn.L1Loss:
+    criterion = nn.L1Loss().to(config.device)
+
+    return criterion
+
+
+def define_optimizer(model) -> optim:
+    optimizer = optim.Adam(model.parameters(), lr=config.model_lr, betas=config.model_betas)
+
+    return optimizer
+
+
+def define_scheduler(optimizer) -> optim.lr_scheduler:
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=config.lr_scheduler_step_size, gamma=config.lr_scheduler_gamma)
+
+    return scheduler
+
+
+def resume_checkpoint(model):
+    if config.resume:
+        if config.resume_weight != "":
+            model.load_state_dict(torch.load(config.resume_weight), strict=config.strict)
+
+
+def train(model, train_dataloader, criterion, optimizer, epoch, scaler, writer) -> None:
+    # Calculate how many iterations there are under epoch
+    batches = len(train_dataloader)
+
+    batch_time = AverageMeter("Time", ":6.3f")
+    data_time = AverageMeter("Data", ":6.3f")
+    losses = AverageMeter("Loss", ":6.6f")
+    psnres = AverageMeter("PSNR", ":4.2f")
+    progress = ProgressMeter(batches, [batch_time, data_time, losses, psnres], prefix=f"Epoch: [{epoch}]")
+
+    # Put the generator in training mode
     model.train()
-    progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
-    for iteration, (inputs, target) in progress_bar:
-        optimizer.zero_grad()
 
-        inputs, target = inputs.to(device), target.to(device)
+    end = time.time()
+    for index, (lr, hr) in enumerate(train_dataloader):
+        # measure data loading time
+        data_time.update(time.time() - end)
 
-        # Runs the forward pass with autocasting.
+        lr = lr.to(config.device, non_blocking=True)
+        hr = hr.to(config.device, non_blocking=True)
+
+        # Initialize the generator gradient
+        model.zero_grad()
+
+        # Mixed precision training
         with amp.autocast():
-            output = model(inputs)
-            loss = criterion(output, target)
-
-        # Scales loss.  Calls backward() on scaled loss to
-        # create scaled gradients.
-        # Backward passes under autocast are not recommended.
-        # Backward ops run in the same dtype autocast chose
-        # for corresponding forward ops.
+            sr = model(lr)
+            loss = criterion(sr, hr)
+        # Gradient zoom + clip gradient
         scaler.scale(loss).backward()
-
-        # scaler.step() first unscales the gradients of
-        # the optimizer's assigned params.
-        # If these gradients do not contain infs or NaNs,
-        # optimizer.step() is then called,
-        # otherwise, optimizer.step() is skipped.
+        # Update generator weight
         scaler.step(optimizer)
-
-        # Updates the scale for next iteration.
         scaler.update()
 
-        progress_bar.set_description(f"[{epoch + 1}/{args.epochs}][{iteration + 1}/{len(train_dataloader)}] "
-                                     f"Loss: {loss.item():.6f} ")
+        # measure accuracy and record loss
+        psnr = 10. * torch.log10(1. / torch.mean((sr - hr) ** 2))
+        losses.update(loss.item(), hr.size(0))
+        psnres.update(psnr.item(), hr.size(0))
 
-    # Test
-    avg_psnr = 0.
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        # In this Epoch, every one hundred iterations and the last iteration print the loss function
+        # and write it to Tensorboard at the same time
+        writer.add_scalar("Train/Loss", loss.item(), index + epoch * batches + 1)
+
+        if index % config.print_frequency == 0:
+            progress.display(index)
+
+
+def validate(model, valid_dataloader, criterion, epoch, writer) -> float:
+    batch_time = AverageMeter("Time", ":6.3f")
+    losses = AverageMeter("Loss", ":6.6f")
+    psnres = AverageMeter("PSNR", ":4.2f")
+    progress = ProgressMeter(len(valid_dataloader), [batch_time, losses, psnres], prefix="Valid: ")
+
+    # Put the generator in verification mode.
+    model.eval()
+
     with torch.no_grad():
-        model.eval()
-        progress_bar = tqdm(enumerate(val_dataloader), total=len(val_dataloader))
-        for iteration, (inputs, target) in progress_bar:
-            inputs, target = inputs.to(device), target.to(device)
+        end = time.time()
+        for index, (lr, hr) in enumerate(valid_dataloader):
+            lr = lr.to(config.device, non_blocking=True)
+            hr = hr.to(config.device, non_blocking=True)
 
-            prediction = model(inputs)
-            mse = criterion(prediction, target)
-            psnr = 10 * math.log10(1. / mse.item())
-            avg_psnr += psnr
-            progress_bar.set_description(f"Epoch: {epoch + 1} [{iteration + 1}/{len(val_dataloader)}] "
-                                         f"Loss: {mse.item():.6f} "
-                                         f"PSNR: {psnr:.2f}.")
+            # Mixed precision
+            with amp.autocast():
+                sr = model(lr)
+                loss = criterion(sr, hr)
 
-    print(f"Average PSNR: {avg_psnr / len(val_dataloader):.2f} dB.")
+            # measure accuracy and record loss
+            psnr = 10. * torch.log10(1. / torch.mean((sr - hr) ** 2))
+            losses.update(loss.item(), hr.size(0))
+            psnres.update(psnr.item(), hr.size(0))
 
-    # Dynamic adjustment of learning rate.
-    scheduler.step()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-    # Save model
-    if (epoch + 1) % 20 == 0:
-        torch.save(model.state_dict(), f"weights/edsr_{args.scale_factor}x_epoch_{epoch + 1}.pth")
-    if avg_psnr > best_psnr:
-        best_psnr = avg_psnr
-        torch.save(model.state_dict(), f"weights/edsr_{args.scale_factor}x.pth")
+            if index % config.print_frequency == 0:
+                progress.display(index)
+
+        writer.add_scalar("Valid/PSNR", psnres.avg, epoch + 1)
+        # Print evaluation indicators.
+        print(f"* PSNR: {psnres.avg:4.2f}.\n")
+
+    return psnres.avg
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self, name, fmt=":f"):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
+        return fmtstr.format(**self.__dict__)
+
+
+class ProgressMeter(object):
+    def __init__(self, num_batches, meters, prefix=""):
+        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
+        self.meters = meters
+        self.prefix = prefix
+
+    def display(self, batch):
+        entries = [self.prefix + self.batch_fmtstr.format(batch)]
+        entries += [str(meter) for meter in self.meters]
+        print("\t".join(entries))
+
+    def _get_batch_fmtstr(self, num_batches):
+        num_digits = len(str(num_batches // 1))
+        fmt = "{:" + str(num_digits) + "d}"
+        return "[" + fmt + "/" + fmt.format(num_batches) + "]"
+
+
+if __name__ == "__main__":
+    main()
