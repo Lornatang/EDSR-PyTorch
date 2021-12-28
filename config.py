@@ -21,9 +21,9 @@ from torch.backends import cudnn as cudnn
 torch.manual_seed(0)
 device = torch.device("cuda", 0)
 cudnn.benchmark = True
-upscale_factor = 2
+upscale_factor = 4
 mode = "train"
-exp_name = "edsr_x2"
+exp_name = "edsr_x4"
 
 # ==============================================================================
 # Training configuration
