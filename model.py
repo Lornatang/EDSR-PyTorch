@@ -14,7 +14,7 @@
 import math
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class ResidualBlock(nn.Module):
@@ -36,34 +36,34 @@ class EDSR(nn.Module):
     def __init__(self, upscale_factor: int) -> None:
         super(EDSR, self).__init__()
         # First layer
-        self.conv1 = nn.Conv2d(3, 64, (3, 3), (1, 1), (1, 1))
+        self.conv1 = nn.Conv2d(3, 256, (3, 3), (1, 1), (1, 1))
 
         # Residual blocks
         trunk = []
-        for _ in range(16):
-            trunk.append(ResidualBlock(64))
+        for _ in range(32):
+            trunk.append(ResidualBlock(256))
         self.trunk = nn.Sequential(*trunk)
 
         # First layer
-        self.conv2 = nn.Conv2d(64, 64, (3, 3), (1, 1), (1, 1))
+        self.conv2 = nn.Conv2d(256, 256, (3, 3), (1, 1), (1, 1))
 
         # Upsampling layers
         upsampling = []
         if upscale_factor == 2 or upscale_factor == 4:
             for _ in range(int(math.log(upscale_factor, 2))):
                 upsampling += [
-                    nn.Conv2d(64, 256, (3, 3), (1, 1), (1, 1)),
+                    nn.Conv2d(256, 1024, (3, 3), (1, 1), (1, 1)),
                     nn.PixelShuffle(2),
                 ]
         elif upscale_factor == 3:
             upsampling += [
-                nn.Conv2d(64, 576, (3, 3), (1, 1), (1, 1)),
+                nn.Conv2d(256, 2304, (3, 3), (1, 1), (1, 1)),
                 nn.PixelShuffle(3),
             ]
         self.upsampling = nn.Sequential(*upsampling)
 
         # Final output layer
-        self.conv3 = nn.Conv2d(64, 3, (3, 3), (1, 1), (1, 1))
+        self.conv3 = nn.Conv2d(256, 3, (3, 3), (1, 1), (1, 1))
 
         # Init weights
         self._initialize_weights()
