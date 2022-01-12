@@ -44,12 +44,12 @@ def main():
     train_dataloader, valid_dataloader = load_dataset()
     print("Load train dataset and valid dataset successfully.")
 
-    print("Build SR model...")
+    print("Build EDSR model...")
     model = build_model(config.upscale_factor)
-    print("Build SR model successfully.")
+    print("Build EDSR model successfully.")
 
     print("Define all loss functions...")
-    criterion = define_loss()
+    psnr_criterion, pixel_criterion = define_loss()
     print("Define all loss functions successfully.")
 
     print("Define all optimizer functions...")
@@ -72,9 +72,9 @@ def main():
 
     print("Start train model.")
     for epoch in range(config.start_epoch, config.epochs):
-        train(model, train_dataloader, criterion, optimizer, epoch, scaler, writer)
+        train(model, train_dataloader, psnr_criterion, pixel_criterion, optimizer, epoch, scaler, writer)
 
-        psnr = validate(model, valid_dataloader, criterion, epoch, writer)
+        psnr = validate(model, valid_dataloader, psnr_criterion, epoch, writer)
         # Automatically save the model with the highest index
         is_best = psnr > best_psnr
         best_psnr = max(psnr, best_psnr)
@@ -115,10 +115,11 @@ def build_model(upscale_factor: int) -> nn.Module:
     return model
 
 
-def define_loss() -> nn.L1Loss:
-    criterion = nn.L1Loss().to(config.device)
+def define_loss() -> [nn.MSELoss, nn.L1Loss]:
+    psnr_criterion = nn.MSELoss().to(config.device)
+    pixel_criterion = nn.L1Loss().to(config.device)
 
-    return criterion
+    return psnr_criterion, pixel_criterion
 
 
 def define_optimizer(model) -> optim:
@@ -139,7 +140,7 @@ def resume_checkpoint(model):
             model.load_state_dict(torch.load(config.resume_weight), strict=config.strict)
 
 
-def train(model, train_dataloader, criterion, optimizer, epoch, scaler, writer) -> None:
+def train(model, train_dataloader, psnr_criterion, pixel_criterion, optimizer, epoch, scaler, writer) -> None:
     # Calculate how many iterations there are under epoch
     batches = len(train_dataloader)
 
@@ -166,35 +167,33 @@ def train(model, train_dataloader, criterion, optimizer, epoch, scaler, writer) 
         # Mixed precision training
         with amp.autocast():
             sr = model(lr)
-            loss = criterion(sr, hr)
-        # Gradient zoom + clip gradient
+            loss = pixel_criterion(sr, hr)
+
+        # Gradient zoom
         scaler.scale(loss).backward()
         # Update generator weight
         scaler.step(optimizer)
         scaler.update()
 
         # measure accuracy and record loss
-        psnr = 10. * torch.log10(1. / torch.mean((sr - hr) ** 2))
-        losses.update(loss.item(), hr.size(0))
-        psnres.update(psnr.item(), hr.size(0))
+        psnr = 10. * torch.log10(1. / psnr_criterion(sr, hr))
+        losses.update(loss.item(), lr.size(0))
+        psnres.update(psnr.item(), lr.size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
-        # In this Epoch, every one hundred iterations and the last iteration print the loss function
-        # and write it to Tensorboard at the same time
+        # Writer Loss to file
         writer.add_scalar("Train/Loss", loss.item(), index + epoch * batches + 1)
-
-        if index % config.print_frequency == 0:
+        if index % config.print_frequency == 0 and index != 0:
             progress.display(index)
 
 
-def validate(model, valid_dataloader, criterion, epoch, writer) -> float:
+def validate(model, valid_dataloader, psnr_criterion, epoch, writer) -> float:
     batch_time = AverageMeter("Time", ":6.3f")
-    losses = AverageMeter("Loss", ":6.6f")
     psnres = AverageMeter("PSNR", ":4.2f")
-    progress = ProgressMeter(len(valid_dataloader), [batch_time, losses, psnres], prefix="Valid: ")
+    progress = ProgressMeter(len(valid_dataloader), [batch_time, psnres], prefix="Valid: ")
 
     # Put the generator in verification mode.
     model.eval()
@@ -208,11 +207,9 @@ def validate(model, valid_dataloader, criterion, epoch, writer) -> float:
             # Mixed precision
             with amp.autocast():
                 sr = model(lr)
-                loss = criterion(sr, hr)
 
             # measure accuracy and record loss
-            psnr = 10. * torch.log10(1. / torch.mean((sr - hr) ** 2))
-            losses.update(loss.item(), hr.size(0))
+            psnr = 10. * torch.log10(1. / psnr_criterion(sr, hr))
             psnres.update(psnr.item(), hr.size(0))
 
             # measure elapsed time
