@@ -45,17 +45,17 @@ if mode == "train":
     resume_weight = ""
 
     # Total num epochs
-    epochs = 309
+    epochs = 33
 
     # Adam optimizer parameter (faster training and better PSNR)
     model_lr = 1e-4
     model_betas = (0.9, 0.999)
 
     # StepLR scheduler parameter
-    lr_scheduler_step_size = 206
+    lr_scheduler_step_size = 22
     lr_scheduler_gamma = 0.5
 
-    print_frequency = 100
+    print_frequency = 1000
 
 # ==============================================================================
 # Verify configuration
