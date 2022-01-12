@@ -50,8 +50,10 @@ class ImageDataset(Dataset):
                 transforms.RandomRotation(90),
                 transforms.RandomHorizontalFlip(0.5),
             ])
-        else:
+        elif mode == "valid":
             self.hr_transforms = transforms.CenterCrop(image_size)
+        else:
+            raise "Unsupported data processing model, please use `train` or `valid`."
 
         self.lr_transforms = transforms.Resize(image_size // upscale_factor, interpolation=IMode.BICUBIC, antialias=True)
 
