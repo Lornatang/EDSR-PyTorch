@@ -30,9 +30,9 @@ def main() -> None:
         os.makedirs(results_dir)
 
     # Initialize the super-resolution model
-    print("Build SR model...")
+    print("Build EDSR model...")
     model = EDSR(config.upscale_factor).to(config.device)
-    print("Build SR model successfully.")
+    print("Build EDSR model successfully.")
 
     # Load the super-resolution model weights
     print(f"Load SR model weights `{os.path.abspath(config.model_path)}`...")
