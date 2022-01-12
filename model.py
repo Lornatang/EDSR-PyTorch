@@ -18,18 +18,20 @@ from torch import nn
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels) -> None:
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, inputs):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         out = self.conv1(inputs)
         out = self.relu(out)
         out = self.conv2(out)
-        out *= 0.1
-        return out + inputs
+        out = torch.mul(out, 0.1)
+        out = torch.add(out, inputs)
+
+        return out
 
 
 class EDSR(nn.Module):
