@@ -7,7 +7,6 @@
 #### DIV2K
 
 - Image format
-    - [Google Driver](https://drive.google.com/drive/folders/12kdXxN2Y2EtUmf0Ob4zhOJBZwg_eUj3J?usp=sharing)
     - [Baidu Driver](https://pan.baidu.com/s/1EXXbhxxRDtqPosT2WL8NkA) access: `llot`
 
 ### Download valid dataset
