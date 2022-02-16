@@ -13,21 +13,21 @@
 # ==============================================================================
 """Realize the parameter configuration function of dataset, model, training and verification code."""
 import torch
-from torch.backends import cudnn as cudnn
+from torch.backends import cudnn
 
-# ==============================================================================
-# General configuration
-# ==============================================================================
+# Random seed to maintain reproducible results
 torch.manual_seed(0)
+# Use GPU for training by default
 device = torch.device("cuda", 0)
+# Turning on when the image size does not change during training can speed up training
 cudnn.benchmark = True
-upscale_factor = 2
+# Image magnification factor
+upscale_factor = 4
+# Current configuration parameter method
 mode = "train"
-exp_name = "train_edsr_x2"
+# Experiment name, easy to save weights and log files
+exp_name = "EDSR_x4"
 
-# ==============================================================================
-# Training configuration
-# ==============================================================================
 if mode == "train":
     # Dataset
     # Image format
@@ -47,7 +47,7 @@ if mode == "train":
     # Total num epochs
     epochs = 33
 
-    # Adam optimizer parameter (faster training and better PSNR)
+    # Adam optimizer parameter
     model_lr = 1e-4
     model_betas = (0.9, 0.999)
 
@@ -57,9 +57,6 @@ if mode == "train":
 
     print_frequency = 1000
 
-# ==============================================================================
-# Verify configuration
-# ==============================================================================
 if mode == "valid":
     # Test data address
     lr_dir = f"data/Set5/LRbicx{upscale_factor}"

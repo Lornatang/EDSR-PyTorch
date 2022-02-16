@@ -12,11 +12,8 @@
 # limitations under the License.
 # ==============================================================================
 """Realize the function of dataset preparation."""
-import io
 import os
 
-import lmdb
-import numpy as np
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -47,7 +44,7 @@ class ImageDataset(Dataset):
         if mode == "train":
             self.hr_transforms = transforms.Compose([
                 transforms.RandomCrop(image_size),
-                transforms.RandomRotation(90),
+                transforms.RandomRotation([0, 90]),
                 transforms.RandomHorizontalFlip(0.5),
             ])
         elif mode == "valid":
@@ -55,7 +52,7 @@ class ImageDataset(Dataset):
         else:
             raise "Unsupported data processing model, please use `train` or `valid`."
 
-        self.lr_transforms = transforms.Resize(image_size // upscale_factor, interpolation=IMode.BICUBIC, antialias=True)
+        self.lr_transforms = transforms.Resize(image_size // upscale_factor, interpolation=IMode.BICUBIC)
 
     def __getitem__(self, batch_index: int) -> [Tensor, Tensor]:
         # Read a batch of image data

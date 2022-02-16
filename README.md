@@ -2,8 +2,7 @@
 
 ### Overview
 
-This repository contains an op-for-op PyTorch reimplementation
-of [Enhanced Deep Residual Networks for Single Image Super-Resolution](https://arxiv.org/abs/1707.02921).
+This repository contains an op-for-op PyTorch reimplementation of [Enhanced Deep Residual Networks for Single Image Super-Resolution](https://arxiv.org/abs/1707.02921).
 
 ### Table of contents
 
@@ -19,7 +18,7 @@ of [Enhanced Deep Residual Networks for Single Image Super-Resolution](https://a
     - [Train](#train)
     - [Result](#result)
     - [Credit](#credit)
-        - [Accelerating the Super-Resolution Convolutional Neural Network](#accurate-image-super-resolution-using-very-deep-convolutional-networks)
+        - [Enhanced Deep Residual Networks for Single Image Super-Resolution](#enhanced-deep-residual-networks-for-single-image-super-resolution)
 
 ## About Enhanced Deep Residual Networks for Single Image Super-Resolution
 
@@ -35,8 +34,8 @@ methods on benchmark datasets and prove its excellence by winning the NTIRE2017 
 
 ## Download weights
 
-- [Google Driver](https://drive.google.com/drive/folders/1cYH-yqNCWW0yKiNDQchIRCspFJ4nsECw?usp=sharing)
-- [Baidu Driver](https://pan.baidu.com/s/1LFxrxEopGkd8oIgR85KZwg) access:`llot`
+- [Google Driver](https://drive.google.com/drive/folders/17ju2HN7Y6pyPK2CC_AqnAfTOe9_3hCQ8?usp=sharing)
+- [Baidu Driver](https://pan.baidu.com/s/1yNs4rqIb004-NKEdKBJtYg?pwd=llot)
 
 ## Download datasets
 
@@ -72,16 +71,16 @@ methods on benchmark datasets and prove its excellence by winning the NTIRE2017 
 
 Modify the contents of the file as follows.
 
-- line 24: `upscale_factor` change to the magnification you need to enlarge.
-- line 25: `mode` change Set to valid mode.
-- line 69: `model_path` change weight address after training.
+- line 25: `upscale_factor` change to the magnification you need to enlarge.
+- line 27: `mode` change Set to valid mode.
+- line 66: `model_path` change weight address after training.
 
 ## Train
 
 Modify the contents of the file as follows.
 
-- line 24: `upscale_factor` change to the magnification you need to enlarge.
-- line 25: `mode` change Set to train mode.
+- line 25: `upscale_factor` change to the magnification you need to enlarge.
+- line 27: `mode` change Set to train mode.
 
 If you want to load weights that you've trained before, modify the contents of the file as follows.
 
@@ -96,11 +95,11 @@ Source of original paper results: https://arxiv.org/pdf/1707.02921.pdf
 
 In the following table, the value in `()` indicates the result of the project, and `-` indicates no test.
 
-| Dataset | Scale |     PSNR     |
-|:-------:|:-----:|:------------:|
-|  Set5   |   2   | -(**35.34**) |
-|  Set5   |   3   | -(**32.00**) |
-|  Set5   |   4   | -(**29.91**) |
+| Dataset | Scale |       PSNR       |
+|:-------:|:-----:|:----------------:|
+|  DIV2K  |   2   | 34.61(**34.35**) |
+|  DIV2K  |   3   | 30.92(**30.84**) |
+|  DIV2K  |   4   | 28.95(**28.85**) |
 
 Low Resolution / Super Resolution / High Resolution
 <span align="center"><img src="assets/result.png"/></span>

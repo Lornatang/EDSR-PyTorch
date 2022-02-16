@@ -24,21 +24,21 @@ from model import EDSR
 
 
 def main() -> None:
-    # Create a folder of super-resolution experiment results
-    results_dir = os.path.join("results", "test", config.exp_name)
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
-
     # Initialize the super-resolution model
     print("Build EDSR model...")
     model = EDSR(config.upscale_factor).to(config.device)
     print("Build EDSR model successfully.")
 
     # Load the super-resolution model weights
-    print(f"Load SR model weights `{os.path.abspath(config.model_path)}`...")
+    print(f"Load EDSR model weights `{os.path.abspath(config.model_path)}`...")
     state_dict = torch.load(config.model_path, map_location=config.device)
     model.load_state_dict(state_dict)
-    print(f"Load SR model weights `{os.path.abspath(config.model_path)}` successfully.")
+    print(f"Load EDSR model weights `{os.path.abspath(config.model_path)}` successfully.")
+
+    # Create a folder of super-resolution experiment results
+    results_dir = os.path.join("results", "test", config.exp_name)
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
 
     # Start the verification mode of the model.
     model.eval()
@@ -68,7 +68,7 @@ def main() -> None:
 
         # Only reconstruct the Y channel image data.
         with torch.no_grad():
-            sr_tensor = model(lr_tensor).clamp_(0, 1)
+            sr_tensor = model(lr_tensor)
 
         # Cal PSNR
         total_psnr += 10. * torch.log10(1. / torch.mean((sr_tensor - hr_tensor) ** 2))
