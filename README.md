@@ -12,8 +12,6 @@ This repository contains an op-for-op PyTorch reimplementation of [Enhanced Deep
     - [About Enhanced Deep Residual Networks for Single Image Super-Resolution](#about-enhanced-deep-residual-networks-for-single-image-super-resolution)
     - [Download weights](#download-weights)
     - [Download datasets](#download-datasets)
-        - [Download train dataset](#download-train-dataset)
-        - [Download valid dataset](#download-valid-dataset)
     - [Test](#test)
     - [Train](#train)
     - [Result](#result)
@@ -39,55 +37,30 @@ methods on benchmark datasets and prove its excellence by winning the NTIRE2017 
 
 ## Download datasets
 
-### Download train dataset
+Contains DIV2K, DIV8K, Flickr2K, OST, T91, Set5, Set14, BSDS100 and BSDS200, etc.
 
-#### DIV2K
-
-- Image format
-    - [Google Driver](https://drive.google.com/drive/folders/12kdXxN2Y2EtUmf0Ob4zhOJBZwg_eUj3J?usp=sharing)
-    - [Baidu Driver](https://pan.baidu.com/s/1EXXbhxxRDtqPosT2WL8NkA) access: `llot`
-
-### Download valid dataset
-
-#### Set5
-
-- Image format
-    - [Google Driver](https://drive.google.com/file/d/1GtQuoEN78q3AIP8vkh-17X90thYp_FfU/view?usp=sharing)
-    - [Baidu Driver](https://pan.baidu.com/s/1dlPcpwRPUBOnxlfW5--S5g) access:`llot`
-
-#### Set14
-
-- Image format
-    - [Google Driver](https://drive.google.com/file/d/1CzwwAtLSW9sog3acXj8s7Hg3S7kr2HiZ/view?usp=sharing)
-    - [Baidu Driver](https://pan.baidu.com/s/1KBS38UAjM7bJ_e6a54eHaA) access:`llot`
-
-#### BSD200
-
-- Image format
-    - [Google Driver](https://drive.google.com/file/d/1cdMYTPr77RdOgyAvJPMQqaJHWrD5ma5n/view?usp=sharing)
-    - [Baidu Driver](https://pan.baidu.com/s/1xahPw4dNNc3XspMMOuw1Bw) access:`llot`
+- [Google Driver](https://drive.google.com/drive/folders/1A6lzGeQrFMxPqJehK9s37ce-tPDj20mD?usp=sharing)
+- [Baidu Driver](https://pan.baidu.com/s/1o-8Ty_7q6DiS3ykLU09IVg?pwd=llot)
 
 ## Test
 
 Modify the contents of the file as follows.
 
-- line 25: `upscale_factor` change to the magnification you need to enlarge.
-- line 27: `mode` change Set to valid mode.
-- line 66: `model_path` change weight address after training.
+- line 30: `upscale_factor` change to the magnification you need to enlarge.
+- line 32: `mode` change Set to valid mode.
+- line 69: `model_path` change weight address after training.
 
 ## Train
 
 Modify the contents of the file as follows.
 
-- line 25: `upscale_factor` change to the magnification you need to enlarge.
-- line 27: `mode` change Set to train mode.
+- line 30: `upscale_factor` change to the magnification you need to enlarge.
+- line 32: `mode` change Set to train mode.
 
 If you want to load weights that you've trained before, modify the contents of the file as follows.
 
-- line 42: `resume` change to `True`.
-- line 43: `strict` Transfer learning is set to `False`, incremental learning is set to `True`.
-- line 44: `start_epoch` change number of training iterations in the previous round.
-- line 45: `resume_weight` the weight address that needs to be loaded.
+- line 47: `start_epoch` change number of training iterations in the previous round.
+- line 48: `resume` the weight address that needs to be loaded.
 
 ## Result
 
@@ -97,9 +70,9 @@ In the following table, the value in `()` indicates the result of the project, a
 
 | Dataset | Scale |       PSNR       |
 |:-------:|:-----:|:----------------:|
-|  DIV2K  |   2   | 34.61(**34.35**) |
-|  DIV2K  |   3   | 30.92(**30.84**) |
-|  DIV2K  |   4   | 28.95(**28.85**) |
+|  DIV2K  |   2   | 38.10(**37.75**) |
+|  DIV2K  |   3   | 34.65(**34.02**) |
+|  DIV2K  |   4   | 32.46(**31.83**) |
 
 Low Resolution / Super Resolution / High Resolution
 <span align="center"><img src="assets/result.png"/></span>

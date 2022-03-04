@@ -18,7 +18,7 @@ from torch import nn
 
 
 class ResidualConvBlock(nn.Module):
-    def __init__(self, channels) -> None:
+    def __init__(self, channels: int) -> None:
         super(ResidualConvBlock, self).__init__()
         self.rcb = nn.Sequential(
             nn.Conv2d(channels, channels, (3, 3), (1, 1), (1, 1)),
