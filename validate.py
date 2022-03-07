@@ -30,7 +30,7 @@ def main() -> None:
     print("Build EDSR model successfully.")
 
     # Load the super-resolution model weights
-    checkpoint = torch.load(config.model_path, map_location=torch.device("cpu"))
+    checkpoint = torch.load(config.model_path, map_location=lambda storage, loc: storage)
     model.load_state_dict(checkpoint["state_dict"])
     print(f"Load EDSR model weights `{os.path.abspath(config.model_path)}` successfully.")
 
